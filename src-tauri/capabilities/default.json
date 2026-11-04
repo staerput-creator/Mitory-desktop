@@ -1,9 +1,26 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default permissions for Story Architect Desktop",
-  "windows": ["main"],
+  "description": "Default permissions for Mitory Desktop",
+  "windows": [
+    "main",
+    "*"
+  ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "core:window:default",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-fullscreen",
+    "core:window:allow-start-dragging",
+    "core:window:allow-destroy",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "updater:default",
+    "process:default"
   ]
 }

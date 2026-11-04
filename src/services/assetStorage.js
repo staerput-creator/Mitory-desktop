@@ -67,6 +67,20 @@ async function deleteAssetFromIDB(imageId) {
   } catch {
     // ignore
   }
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(LEGACY_ASSETS_LS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && imageId in parsed) {
+          delete parsed[imageId];
+          localStorage.setItem(LEGACY_ASSETS_LS_KEY, JSON.stringify(parsed));
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
 }
 
 function computeShortHash(str) {

@@ -11,29 +11,30 @@ import {
   Compass
 } from 'lucide-react';
 import { useStoryStore } from '../store';
+import { getTranslation } from '../i18n/translations';
 
 const REGION_COLORS = [
   { id: 'blue', label: 'Синий', hex: '#3b82f6' },
+  { id: 'amber', label: 'Янтарный', hex: '#f59e0b' },
   { id: 'emerald', label: 'Изумрудный', hex: '#10b981' },
   { id: 'purple', label: 'Фиолетовый', hex: '#8b5cf6' },
-  { id: 'amber', label: 'Янтарный', hex: '#f59e0b' },
-  { id: 'rose', label: 'Рубиновый', hex: '#ec4899' }
+  { id: 'gray', label: 'Серый', hex: '#64748b' }
 ];
 
 function countNodesInRegion(region, nodes = []) {
   if (!region) return { scenesCount: 0, decisionsCount: 0, totalCount: 0 };
   const rx1 = Number(region.x) || 0;
   const ry1 = Number(region.y) || 0;
-  const rx2 = rx1 + (Number(region.width) || 560);
-  const ry2 = ry1 + (Number(region.height) || 380);
+  const rx2 = rx1 + (Number(region.width) || 400);
+  const ry2 = ry1 + (Number(region.height) || 300);
 
   let scenesCount = 0;
   let decisionsCount = 0;
 
   for (const node of nodes) {
     if (!node || node.type === 'regionNode') continue;
-    const nx = (Number(node.position?.x) || 0) + 120;
-    const ny = (Number(node.position?.y) || 0) + 75;
+    const nx = Number(node.position?.x) || 0;
+    const ny = Number(node.position?.y) || 0;
     if (nx >= rx1 && nx <= rx2 && ny >= ry1 && ny <= ry2) {
       if (node.data?.type === 'decision') {
         decisionsCount += 1;
@@ -50,7 +51,7 @@ function countNodesInRegion(region, nodes = []) {
   };
 }
 
-export default function ChapterNavigator({ isOpen, onClose }) {
+export default function ChapterNavigator({ isOpen, onClose, dockedAtBottom = false }) {
   const { fitBounds, screenToFlowPosition } = useReactFlow();
   const regions = useStoryStore((s) => s.regions);
   const nodes = useStoryStore((s) => s.nodes);
@@ -59,6 +60,8 @@ export default function ChapterNavigator({ isOpen, onClose }) {
   const deleteRegion = useStoryStore((s) => s.deleteRegion);
   const reorderRegions = useStoryStore((s) => s.reorderRegions);
   const showToast = useStoryStore((s) => s.showToast);
+  const language = useStoryStore((s) => s.language || 'ru');
+  const t = getTranslation(language);
 
   const [dragIndex, setDragIndex] = useState(null);
   const [newTitle, setNewTitle] = useState('');
@@ -76,8 +79,8 @@ export default function ChapterNavigator({ isOpen, onClose }) {
         {
           x: Number(region.x) || 0,
           y: Number(region.y) || 0,
-          width: Math.max(300, Number(region.width) || 560),
-          height: Math.max(200, Number(region.height) || 380)
+          width: Math.max(250, Number(region.width) || 400),
+          height: Math.max(150, Number(region.height) || 300)
         },
         { duration: 800, padding: 0.25 }
       );
@@ -85,7 +88,6 @@ export default function ChapterNavigator({ isOpen, onClose }) {
     [fitBounds]
   );
 
-  // Быстрые горячие клавиши Ctrl + 1 .. Ctrl + 9 для мгновенного перелёта к главе
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (
@@ -101,7 +103,7 @@ export default function ChapterNavigator({ isOpen, onClose }) {
           if (targetRegion) {
             event.preventDefault();
             focusRegion(targetRegion);
-            showToast(`Камера перемещена: ${idx + 1}. ${targetRegion.title}`, 'info');
+            showToast(`${idx + 1}. ${targetRegion.title}`, 'info');
           }
         }
       }
@@ -118,24 +120,24 @@ export default function ChapterNavigator({ isOpen, onClose }) {
       x: Math.round(window.innerWidth * 0.42),
       y: Math.round(window.innerHeight * 0.35)
     });
-    const title = newTitle.trim() || `Акт ${sortedRegions.length + 1}: Новая глава`;
+    const title = newTitle.trim() || `${t.regions.defaultTitle} ${sortedRegions.length + 1}`;
     addRegion(pos, { title, color: newColor });
     setNewTitle('');
   };
 
   return (
-    <aside style={styles.drawer} aria-label="Навигатор глав и хроника сюжета">
+    <aside className="sa-modal-card" style={{ ...styles.drawer, ...(dockedAtBottom ? { top: "auto", bottom: 68 } : { top: 48 }) }} aria-label={t.chapterNav.title}>
       <div style={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <MapIcon size={18} color="#10b981" />
           <div>
-            <div style={{ fontWeight: 800, fontSize: '0.94rem' }}>Навигатор глав</div>
+            <div style={{ fontWeight: 800, fontSize: '0.94rem' }}>{t.chapterNav.title}</div>
             <div style={{ fontSize: '0.71rem', opacity: 0.65 }}>
-              Клик для полёта камеры • Ctrl+1..9
+              {t.chapterNav.subtitle}
             </div>
           </div>
         </div>
-        <button type="button" onClick={onClose} style={styles.iconBtn} title="Закрыть навигатор">
+        <button type="button" onClick={onClose} style={styles.iconBtn} title={t.chapterNav.closeTooltip}>
           <X size={18} />
         </button>
       </div>
@@ -143,12 +145,12 @@ export default function ChapterNavigator({ isOpen, onClose }) {
       {/* Форма быстрого создания новой области/главы */}
       <form onSubmit={handleCreateChapter} style={styles.createBox}>
         <div style={{ fontSize: '0.75rem', fontWeight: 700, marginBottom: 6, opacity: 0.85 }}>
-          + Новая сюжетная область (Глава):
+          {t.chapterNav.newRegionLabel}
         </div>
         <input
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Напр.: 🏰 Акт I: Старый Замок"
+          placeholder={t.chapterNav.newRegionPlaceholder}
           style={styles.input}
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
@@ -158,7 +160,7 @@ export default function ChapterNavigator({ isOpen, onClose }) {
                 key={c.id}
                 type="button"
                 onClick={() => setNewColor(c.hex)}
-                title={c.label}
+                title={t.regions.colors[c.id] || c.label}
                 style={{
                   width: 18,
                   height: 18,
@@ -171,7 +173,7 @@ export default function ChapterNavigator({ isOpen, onClose }) {
             ))}
           </div>
           <button type="submit" style={styles.addBtn}>
-            <Plus size={14} /> Создать главу
+            <Plus size={14} /> {t.chapterNav.createBtn}
           </button>
         </div>
       </form>
@@ -180,7 +182,7 @@ export default function ChapterNavigator({ isOpen, onClose }) {
       <div style={styles.list}>
         {sortedRegions.length === 0 ? (
           <div style={styles.emptyBox}>
-            На полотне пока нет сюжетных областей. Создайте главу выше, через левую палитру или по правому клику мыши на холсте.
+            {t.chapterNav.emptyHint}
           </div>
         ) : (
           sortedRegions.map((region, idx) => {
@@ -214,7 +216,7 @@ export default function ChapterNavigator({ isOpen, onClose }) {
                       flex: 1,
                       minWidth: 0
                     }}
-                    title="Нажмите для плавного перелёта камеры к этой главе"
+                    title={t.chapterNav.flyTooltip}
                   >
                     <GripVertical size={14} style={{ opacity: 0.45, flexShrink: 0, cursor: 'grab' }} />
                     <span
@@ -235,7 +237,7 @@ export default function ChapterNavigator({ isOpen, onClose }) {
                       type="button"
                       onClick={() => focusRegion(region)}
                       style={{ ...styles.miniBtn, color: region.color || '#3b82f6' }}
-                      title={`Перелететь к главе (Ctrl+${idx + 1})`}
+                      title={`${t.chapterNav.flyTooltip} (Ctrl+${idx + 1})`}
                     >
                       <Compass size={14} />
                     </button>
@@ -244,7 +246,7 @@ export default function ChapterNavigator({ isOpen, onClose }) {
                       disabled={idx === 0}
                       onClick={() => idx > 0 && reorderRegions(idx, idx - 1)}
                       style={{ ...styles.miniBtn, opacity: idx === 0 ? 0.3 : 0.8 }}
-                      title="Поднять выше в хронологии"
+                      title={t.chapterNav.moveUpTooltip}
                     >
                       <ArrowUp size={13} />
                     </button>
@@ -253,7 +255,7 @@ export default function ChapterNavigator({ isOpen, onClose }) {
                       disabled={idx === sortedRegions.length - 1}
                       onClick={() => idx < sortedRegions.length - 1 && reorderRegions(idx, idx + 1)}
                       style={{ ...styles.miniBtn, opacity: idx === sortedRegions.length - 1 ? 0.3 : 0.8 }}
-                      title="Опустить ниже в хронологии"
+                      title={t.chapterNav.moveDownTooltip}
                     >
                       <ArrowDown size={13} />
                     </button>
@@ -261,7 +263,7 @@ export default function ChapterNavigator({ isOpen, onClose }) {
                       type="button"
                       onClick={() => deleteRegion(region.id)}
                       style={{ ...styles.miniBtn, color: '#ef4444' }}
-                      title="Удалить область"
+                      title={t.chapterNav.deleteTooltip}
                     >
                       <Trash2 size={13} />
                     </button>
@@ -289,7 +291,7 @@ export default function ChapterNavigator({ isOpen, onClose }) {
                       color: 'var(--text-color)'
                     }}
                   >
-                    [ {scenesCount} сцен • {decisionsCount} развилки ]
+                    {t.chapterNav.statsFormat(scenesCount, decisionsCount)}
                   </span>
                   {idx < 9 && (
                     <span style={{ opacity: 0.55, fontSize: '0.68rem', fontWeight: 700 }}>
@@ -301,7 +303,7 @@ export default function ChapterNavigator({ isOpen, onClose }) {
                 <input
                   value={region.title}
                   onChange={(e) => updateRegion(region.id, { title: e.target.value })}
-                  placeholder="Название главы..."
+                  placeholder={t.chapterNav.renamePlaceholder}
                   style={styles.inlineRenameInput}
                 />
               </div>
@@ -340,14 +342,18 @@ const styles = {
     alignItems: 'center'
   },
   iconBtn: {
+    width: 36,
+    height: 36,
+    boxSizing: 'border-box',
     background: 'none',
     border: 'none',
     color: 'var(--text-color)',
     cursor: 'pointer',
-    padding: 4,
-    borderRadius: 6,
+    padding: 0,
+    borderRadius: 8,
     display: 'inline-flex',
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   createBox: {
     padding: '12px 14px',
@@ -356,8 +362,9 @@ const styles = {
   },
   input: {
     width: '100%',
+    height: 36,
     boxSizing: 'border-box',
-    padding: '7px 10px',
+    padding: '0 10px',
     borderRadius: 8,
     border: '1px solid var(--node-border, #334155)',
     background: 'var(--bg-color, #0f172a)',
@@ -365,7 +372,9 @@ const styles = {
     fontSize: '0.82rem'
   },
   addBtn: {
-    padding: '6px 12px',
+    height: 36,
+    boxSizing: 'border-box',
+    padding: '0 12px',
     borderRadius: 8,
     border: 'none',
     background: '#10b981',
@@ -387,7 +396,7 @@ const styles = {
   },
   emptyBox: {
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 8,
     border: '1px dashed var(--node-border, #334155)',
     fontSize: '0.78rem',
     opacity: 0.72,
@@ -402,22 +411,27 @@ const styles = {
     boxShadow: '0 4px 12px rgba(0,0,0,0.14)'
   },
   miniBtn: {
+    width: 28,
+    height: 28,
+    boxSizing: 'border-box',
     background: 'transparent',
     border: 'none',
     color: 'var(--text-color)',
     cursor: 'pointer',
-    padding: 4,
-    borderRadius: 6,
+    padding: 0,
+    borderRadius: 8,
     display: 'inline-flex',
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   inlineRenameInput: {
     marginTop: 7,
     width: '100%',
+    height: 36,
     boxSizing: 'border-box',
-    padding: '4px 8px',
-    fontSize: '0.76rem',
-    borderRadius: 6,
+    padding: '0 10px',
+    fontSize: '0.78rem',
+    borderRadius: 8,
     border: '1px solid var(--node-border, #334155)',
     background: 'var(--panel-bg, #1e293b)',
     color: 'var(--text-color, #f8fafc)'

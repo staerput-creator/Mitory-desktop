@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useStoryStore } from './store';
-import { Folder, X, Trash2, Edit2, Check, Plus } from 'lucide-react';
+import { Folder, X, Trash2, Edit2, Check, Plus, Users } from 'lucide-react';
 
 export default function CharacterManager({ onClose }) {
   const {
@@ -96,7 +96,10 @@ export default function CharacterManager({ onClose }) {
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div style={styles.header}>
-          <h2 style={{ margin: 0, fontSize: '1.2rem' }}>👥 Персонажи и фракции</h2>
+          <h2 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Users size={20} color="#3b82f6" />
+            <span>Персонажи и фракции</span>
+          </h2>
           <button onClick={onClose} style={styles.iconBtn} title="Закрыть">
             <X size={22} />
           </button>
@@ -111,7 +114,8 @@ export default function CharacterManager({ onClose }) {
             style={styles.input}
           />
           <button onClick={handleCreateGroup} style={styles.btn}>
-            + Фракция
+            <Plus size={16} />
+            <span>Фракция</span>
           </button>
         </div>
 
@@ -345,7 +349,10 @@ const styles = {
     cursor: 'pointer',
     background: '#2563eb',
     color: 'white',
-    fontWeight: 600
+    fontWeight: 600,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6
   },
   grid: {
     display: 'flex',

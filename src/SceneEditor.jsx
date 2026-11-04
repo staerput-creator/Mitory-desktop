@@ -1,13 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useStoryStore, assetStorage } from './store';
+import { readFullResolutionImage } from './utils/imageCompressor';
 import {
-  X, Trash2, Plus, Image as ImageIcon, Loader2, Zap, GitBranch, ArrowUp, ArrowDown, Archive
+  X, Trash2, Plus, Image as ImageIcon, Loader2, Zap, GitBranch, ArrowUp, ArrowDown, Archive,
+  Play, Film, GitFork, Flag, Sparkles, MessageSquare
 } from 'lucide-react';
 
-export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
+export default function SceneEditor({ nodeId, onClose, onSelectNode, onPlayFromNode }) {
   const {
-    nodes, edges, updateNodeData, deleteNode, stashNode, addConnectedScene,
+    nodes, edges, updateNodeData, deleteNode, trashNodes, stashNode, addConnectedScene,
     updateEdgeData, deleteEdge, onConnect,
     characters, groups, variables, showToast
   } = useStoryStore();
@@ -15,7 +17,7 @@ export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
   const node = nodes.find((n) => n.id === nodeId);
   const fileInputRef = useRef(null);
 
-  const [isCompressing, setIsCompressing] = useState(false);
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [newBranchLabel, setNewBranchLabel] = useState('');
   const [newBranchTargetId, setNewBranchTargetId] = useState('__new__');
@@ -32,41 +34,6 @@ export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
   const effects = node.data?.effects || [];
   const outgoingEdges = edges.filter((e) => e.source === nodeId);
 
-  const compressImage = (file, maxWidth = 800, quality = 0.72) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          try {
-            const canvas = document.createElement('canvas');
-            let width = img.width;
-            let height = img.height;
-            if (width > height) {
-              if (width > maxWidth) {
-                height = Math.round((height * maxWidth) / width);
-                width = maxWidth;
-              }
-            } else if (height > maxWidth) {
-              width = Math.round((width * maxWidth) / height);
-              height = maxWidth;
-            }
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', quality));
-          } catch (err) {
-            reject(err);
-          }
-        };
-        img.onerror = reject;
-        img.src = e.target.result;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -75,15 +42,16 @@ export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
       return;
     }
     try {
-      setIsCompressing(true);
-      const compressed = await compressImage(file);
-      const imageId = assetStorage.registerAsset(compressed);
+      setIsLoadingMedia(true);
+      const originalDataUrl = await readFullResolutionImage(file);
+      const imageId = assetStorage.registerAsset(originalDataUrl);
       updateNodeData(nodeId, { imageId });
-      showToast('Фон сцены оптимизирован и сохранён в пул ассетов', 'success');
+      showToast('Фон сцены загружен в 100% оригинальном разрешении', 'success');
     } catch {
-      showToast('Ошибка при обработке изображения', 'error');
+      showToast('Ошибка при чтении файла изображения', 'error');
     } finally {
-      setIsCompressing(false);
+      setIsLoadingMedia(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -157,101 +125,145 @@ export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
   };
 
   const handleCreateBranch = () => {
-    const choiceText = newBranchLabel.trim() || 'Далее →';
+    const choiceText = newBranchLabel.trim() || 'Далее';
     if (newBranchTargetId === '__new__') {
       addConnectedScene(nodeId, choiceText, 'scene');
       showToast('Создана новая связанная сцена', 'success');
     } else {
-      onConnect({ source: nodeId, target: newBranchTargetId });
-      setTimeout(() => {
-        const latestEdges = useStoryStore.getState().edges;
-        const created = latestEdges[latestEdges.length - 1];
-        if (created) updateEdgeData(created.id, choiceText, null);
-      }, 10);
+      onConnect({ source: nodeId, target: newBranchTargetId, label: choiceText });
       showToast('Переход добавлен', 'success');
     }
     setNewBranchLabel('');
   };
 
+  const nodeTypeOptions = [
+    { id: 'start', title: 'Старт', Icon: Play, color: '#10b981' },
+    { id: 'scene', title: 'Сцена', Icon: Film, color: '#3b82f6' },
+    { id: 'decision', title: 'Развилка', Icon: GitFork, color: '#f59e0b' },
+    { id: 'ending', title: 'Финал', Icon: Flag, color: '#a855f7' },
+    { id: 'custom', title: 'Кастом', Icon: Sparkles, color: '#06b6d4' }
+  ];
+
   return (
-    <div style={styles.drawer}>
+    <aside className="sa-scene-editor-drawer" style={styles.drawer}>
+      {/* Шапка инспектора в едином коде с UnifiedHeader */}
       <div style={styles.header}>
-        <div style={{ flex: 1, marginRight: 8 }}>
+        <div style={{ flex: 1, minWidth: 0, marginRight: 10 }}>
           <input
             value={label}
             onChange={(e) => updateNodeData(nodeId, { label: e.target.value })}
+            className="sa-mitory-field"
             style={styles.titleInput}
             placeholder="Название сцены..."
           />
-          <div style={{ fontSize: '0.72rem', opacity: 0.65, marginTop: 2 }}>
-            Все изменения сохраняются автоматически
+          <div style={{ fontSize: '0.69rem', color: '#64748b', marginTop: 4, paddingLeft: 2 }}>
+            Изменения сохраняются автоматически
           </div>
         </div>
-        <button onClick={onClose} style={styles.closeBtn} title="Закрыть панель">
-          <X size={20} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {onPlayFromNode && (
+            <button
+              type="button"
+              onClick={() => onPlayFromNode(nodeId)}
+              className="sa-mitory-action-btn"
+              style={{
+                background: 'rgba(16, 185, 129, 0.14)',
+                borderColor: 'rgba(16, 185, 129, 0.4)',
+                color: '#34d399'
+              }}
+              title="Запустить плеер с этой сцены"
+            >
+              <Play size={12} fill="#10b981" />
+              <span>Играть отсюда</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            style={styles.closeBtn}
+            title="Закрыть инспектор"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
+      {/* Контент инспектора */}
       <div style={styles.content}>
+        {/* 1. Тип узла */}
         <div style={styles.section}>
-          <label style={styles.label}>Тип узла в игре:</label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-            {[
-              { id: 'start', title: '🚀 Старт' },
-              { id: 'scene', title: '🎬 Сцена' },
-              { id: 'decision', title: '🔀 Развилка' },
-              { id: 'ending', title: '🏁 Финал' }
-            ].map((t) => (
-              <button
-                key={t.id}
-                onClick={() => updateNodeData(nodeId, { type: t.id })}
-                style={{
-                  ...styles.typeBtn,
-                  ...(nodeType === t.id ? styles.typeBtnActive : {})
-                }}
-              >
-                {t.title}
-              </button>
-            ))}
+          <label style={styles.label}>Тип узла в графе</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 5 }}>
+            {nodeTypeOptions.map(({ id, title, Icon, color }) => {
+              const isActive = nodeType === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => updateNodeData(nodeId, { type: id })}
+                  style={{
+                    ...styles.typeBtn,
+                    ...(isActive
+                      ? {
+                          borderColor: '#3b82f6',
+                          background: 'rgba(59, 130, 246, 0.18)',
+                          color: '#f8fafc'
+                        }
+                      : {})
+                  }}
+                >
+                  {React.createElement(Icon, { size: 13, color: isActive ? '#60a5fa' : color })}
+                  <span>{title}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
+        {/* 2. Фон сцены (100% оригинальное разрешение без сжатия) */}
         <div style={styles.section}>
+          <div style={styles.sectionHeader}>
+            <label style={{ ...styles.label, marginBottom: 0 }}>Иллюстрация / Фон сцены</label>
+            <button
+              type="button"
+              onClick={() => !isLoadingMedia && fileInputRef.current?.click()}
+              className="sa-mitory-action-btn"
+              style={styles.actionBtn}
+            >
+              {isLoadingMedia ? <Loader2 size={13} className="spin" /> : <ImageIcon size={13} color="#38bdf8" />}
+              <span>{image ? 'Заменить фон' : 'Загрузить фон'}</span>
+            </button>
+          </div>
+
           {image ? (
-            <div style={{ position: 'relative', marginBottom: 8 }}>
+            <div style={styles.imagePreviewWrap}>
               <img
                 src={image}
                 alt="Scene background"
-                style={{ width: '100%', borderRadius: 10, maxHeight: 190, objectFit: 'cover', display: 'block' }}
+                style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }}
               />
               <button
-                onClick={() => updateNodeData(nodeId, { imageId: null })}
+                type="button"
+                onClick={() => updateNodeData(nodeId, { imageId: null, image: null })}
                 style={styles.removeImgBtn}
                 title="Удалить иллюстрацию"
               >
-                <Trash2 size={15} color="white" />
+                <Trash2 size={13} />
               </button>
             </div>
           ) : (
             <div
-              onClick={() => !isCompressing && fileInputRef.current?.click()}
+              onClick={() => !isLoadingMedia && fileInputRef.current?.click()}
               style={{
                 ...styles.uploadPlaceholder,
-                opacity: isCompressing ? 0.6 : 1,
-                cursor: isCompressing ? 'wait' : 'pointer'
+                opacity: isLoadingMedia ? 0.6 : 1,
+                cursor: isLoadingMedia ? 'wait' : 'pointer'
               }}
             >
-              {isCompressing ? (
-                <>
-                  <Loader2 size={24} className="spin" style={{ marginBottom: 4 }} />
-                  <span style={{ fontSize: '0.82rem' }}>Сжатие иллюстрации...</span>
-                </>
-              ) : (
-                <>
-                  <ImageIcon size={24} style={{ opacity: 0.55, marginBottom: 4 }} />
-                  <span style={{ opacity: 0.8, fontSize: '0.82rem' }}>Загрузить фон сцены (авто-сжатие)</span>
-                </>
-              )}
+              <ImageIcon size={18} color="#64748b" />
+              <span style={{ fontSize: '0.76rem', color: '#94a3b8' }}>
+                Нажмите для загрузки фона (100% исходное качество)
+              </span>
             </div>
           )}
           <input
@@ -263,23 +275,33 @@ export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
           />
         </div>
 
+        {/* 3. Описание локации / Ремарка автора */}
         <div style={styles.section}>
-          <label style={styles.label}>Описание локации / Текст от автора:</label>
+          <label style={styles.label}>Описание локации / Ремарка автора</label>
           <textarea
             value={notes}
             onChange={(e) => updateNodeData(nodeId, { notes: e.target.value })}
+            className="sa-mitory-field"
             style={styles.notesArea}
-            placeholder="Опишите атмосферу, окружение или события в начале сцены..."
+            placeholder="Опишите атмосферу, окружение или заметки к сцене..."
           />
         </div>
 
+        {/* 4. Эффекты при входе в сцену */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
-            <span style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Zap size={15} color="#eab308" /> Эффекты при входе в сцену ({effects.length})
+            <span style={styles.sectionTitle}>
+              <Zap size={14} color="#f59e0b" />
+              <span>Эффекты при входе ({effects.length})</span>
             </span>
-            <button onClick={addEffect} style={styles.smallBtn}>
-              + Эффект
+            <button
+              type="button"
+              onClick={addEffect}
+              className="sa-mitory-action-btn"
+              style={styles.actionBtn}
+            >
+              <Sparkles size={13} color="#f59e0b" />
+              <span>+ Эффект</span>
             </button>
           </div>
           {effects.map((ef) => {
@@ -289,6 +311,7 @@ export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
                 <select
                   value={ef.varId}
                   onChange={(e) => updateEffect(ef.id, { varId: e.target.value })}
+                  className="sa-mitory-field"
                   style={{ ...styles.select, flex: 1 }}
                 >
                   {variables.map((variable) => (
@@ -301,43 +324,57 @@ export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
                   <select
                     value={String(ef.value)}
                     onChange={(e) => updateEffect(ef.id, { action: 'set', value: e.target.value === 'true' })}
+                    className="sa-mitory-field"
                     style={styles.select}
                   >
-                    <option value="true">= Получить (Да)</option>
-                    <option value="false">= Убрать (Нет)</option>
+                    <option value="true">= Истина (Да)</option>
+                    <option value="false">= Ложь (Нет)</option>
                   </select>
                 ) : (
                   <>
                     <select
                       value={ef.action || 'add'}
                       onChange={(e) => updateEffect(ef.id, { action: e.target.value })}
+                      className="sa-mitory-field"
                       style={styles.select}
                     >
                       <option value="add">+ Прибавить</option>
-                      <option value="sub">- Отнять</option>
-                      <option value="set">= Установить</option>
+                      <option value="sub">- Вычесть</option>
+                      <option value="set">= Задать</option>
                     </select>
                     <input
                       type="number"
                       value={ef.value}
                       onChange={(e) => updateEffect(ef.id, { value: Number(e.target.value) })}
+                      className="sa-mitory-field"
                       style={{ ...styles.select, width: 64 }}
                     />
                   </>
                 )}
-                <button onClick={() => removeEffect(ef.id)} style={styles.delBtn}>
-                  <Trash2 size={14} />
+                <button type="button" onClick={() => removeEffect(ef.id)} style={styles.iconActionBtn} title="Удалить эффект">
+                  <Trash2 size={13} color="#f87171" />
                 </button>
               </div>
             );
           })}
         </div>
 
+        {/* 5. Реплики и диалоги */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
-            <span style={{ fontWeight: 700, fontSize: '0.92rem' }}>
-              💬 Реплики и диалоги ({dialogue.length})
+            <span style={styles.sectionTitle}>
+              <MessageSquare size={14} color="#3b82f6" />
+              <span>Реплики и диалоги ({dialogue.length})</span>
             </span>
+            <button
+              type="button"
+              onClick={addLine}
+              className="sa-mitory-action-btn"
+              style={styles.actionBtn}
+            >
+              <Plus size={13} color="#3b82f6" />
+              <span>+ Добавить реплику</span>
+            </button>
           </div>
 
           {dialogue.map((line, idx) => {
@@ -347,16 +384,17 @@ export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
                 key={idx}
                 style={{
                   ...styles.lineRow,
-                  borderLeft: `4px solid ${char.color || '#64748b'}`
+                  borderLeft: `3px solid ${char.color || '#475569'}`
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 6 }}>
                   <select
                     value={line.charId}
                     onChange={(e) => updateLine(idx, 'charId', e.target.value)}
+                    className="sa-mitory-field"
                     style={styles.charSelect}
                   >
-                    <option value="">Без персонажа (Автор)</option>
+                    <option value="">От автора (Рассказчик)</option>
                     {groups.map((g) => {
                       const groupChars = characters.filter((c) => c.groupId === g.id);
                       if (groupChars.length === 0) return null;
@@ -372,36 +410,45 @@ export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
                     })}
                   </select>
                   <div style={{ display: 'flex', gap: 2 }}>
-                    <button onClick={() => moveLine(idx, -1)} style={styles.miniIconBtn} title="Выше">
+                    <button type="button" onClick={() => moveLine(idx, -1)} style={styles.iconActionBtn} title="Переместить выше">
                       <ArrowUp size={13} />
                     </button>
-                    <button onClick={() => moveLine(idx, 1)} style={styles.miniIconBtn} title="Ниже">
+                    <button type="button" onClick={() => moveLine(idx, 1)} style={styles.iconActionBtn} title="Переместить ниже">
                       <ArrowDown size={13} />
                     </button>
-                    <button onClick={() => deleteLine(idx)} style={styles.delBtn} title="Удалить реплику">
-                      <Trash2 size={14} />
+                    <button type="button" onClick={() => deleteLine(idx)} style={styles.iconActionBtn} title="Удалить реплику">
+                      <Trash2 size={13} color="#f87171" />
                     </button>
                   </div>
                 </div>
                 <textarea
                   value={line.text}
                   onChange={(e) => updateLine(idx, 'text', e.target.value)}
+                  className="sa-mitory-field"
                   style={styles.lineText}
-                  placeholder="Введите реплику персонажа..."
+                  placeholder="Введите текст реплики..."
                 />
               </div>
             );
           })}
 
-          <button onClick={addLine} style={styles.addBtn}>
-            <Plus size={16} style={{ marginRight: 6 }} /> Добавить реплику
+          <button
+            type="button"
+            onClick={addLine}
+            className="sa-mitory-action-btn"
+            style={styles.fullWidthActionBtn}
+          >
+            <Plus size={13} color="#60a5fa" />
+            <span>+ Добавить реплику</span>
           </button>
         </div>
 
+        {/* 6. Выходы и варианты выбора */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
-            <span style={{ fontWeight: 700, fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <GitBranch size={15} color="#2563eb" /> Выходы и варианты выбора ({outgoingEdges.length})
+            <span style={styles.sectionTitle}>
+              <GitBranch size={14} color="#3b82f6" />
+              <span>Выходы и варианты выбора ({outgoingEdges.length})</span>
             </span>
           </div>
 
@@ -409,63 +456,76 @@ export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
             const targetNode = nodes.find((n) => n.id === edge.target);
             return (
               <div key={edge.id} style={styles.branchItem}>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <input
                     value={edge.label || ''}
                     onChange={(e) => updateEdgeData(edge.id, e.target.value, edge.data?.conditions || edge.data?.condition)}
-                    placeholder="Текст выбора..."
+                    placeholder="Текст варианта выбора..."
+                    className="sa-mitory-field"
                     style={styles.branchInput}
                   />
-                  <div style={{ fontSize: '0.74rem', opacity: 0.7, marginTop: 4 }}>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 5 }}>
                     Ведёт в:{' '}
-                    <b
-                      style={{ color: '#2563eb', cursor: 'pointer' }}
+                    <span
+                      style={{ color: '#60a5fa', fontWeight: 700, cursor: 'pointer' }}
                       onClick={() => targetNode && onSelectNode && onSelectNode(targetNode.id)}
                     >
                       {targetNode?.data?.label || 'Удалённая сцена'}
-                    </b>
+                    </span>
                   </div>
                 </div>
-                <button onClick={() => deleteEdge(edge.id)} style={styles.delBtn} title="Удалить переход">
-                  <Trash2 size={15} />
+                <button type="button" onClick={() => deleteEdge(edge.id)} style={styles.iconActionBtn} title="Удалить переход">
+                  <Trash2 size={14} color="#f87171" />
                 </button>
               </div>
             );
           })}
 
           <div style={styles.newBranchBox}>
-            <div style={{ fontSize: '0.78rem', fontWeight: 600, marginBottom: 6 }}>
-              Быстро добавить вариант ответа / переход:
+            <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#94a3b8', marginBottom: 6 }}>
+              Добавить вариант выбора / переход:
             </div>
             <input
               value={newBranchLabel}
               onChange={(e) => setNewBranchLabel(e.target.value)}
-              placeholder="Текст ответа игрока (напр. Открыть сундук)"
+              placeholder="Текст ответа игрока (напр. Открыть тайник)"
+              className="sa-mitory-field"
               style={{ ...styles.branchInput, marginBottom: 6 }}
             />
             <div style={{ display: 'flex', gap: 6 }}>
               <select
                 value={newBranchTargetId}
                 onChange={(e) => setNewBranchTargetId(e.target.value)}
+                className="sa-mitory-field"
                 style={{ ...styles.select, flex: 1 }}
               >
-                <option value="__new__">✨ Создать новую сцену автоматически</option>
-                {nodes
-                  .filter((n) => n.id !== nodeId)
-                  .map((n) => (
-                    <option key={n.id} value={n.id}>
-                      Вести в: {n.data?.label}
-                    </option>
-                  ))}
+                <option value="__new__">+ Создать новую связанную сцену</option>
+                {nodes.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.id === nodeId ? `↻ В эту же сцену (${n.data?.label})` : `→ ${n.data?.label}`}
+                  </option>
+                ))}
               </select>
-              <button onClick={handleCreateBranch} style={styles.smallPrimaryBtn}>
-                + Создать
+              <button
+                type="button"
+                onClick={handleCreateBranch}
+                className="sa-mitory-action-btn"
+                style={{
+                  ...styles.actionBtn,
+                  background: '#2563eb',
+                  borderColor: '#3b82f6',
+                  color: '#ffffff'
+                }}
+              >
+                <Plus size={13} />
+                <span>+ Вариант выбора</span>
               </button>
             </div>
           </div>
         </div>
 
-        <div style={{ marginTop: 24, paddingTop: 14, borderTop: '1px solid var(--node-border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* 7. Сдержанный блок действий внизу (Убрать в карман / Удалить сцену) */}
+        <div style={styles.footerActions}>
           {stashNode && (
             <button
               type="button"
@@ -473,31 +533,45 @@ export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
                 stashNode(nodeId);
                 onClose();
               }}
-              style={styles.stashBtn}
+              className="sa-mitory-subtle-btn"
             >
-              <Archive size={16} style={{ marginRight: 6 }} /> Убрать сцену в карман (отложить)
+              <Archive size={13} />
+              <span>Убрать в карман</span>
             </button>
           )}
 
           {!confirmDelete ? (
-            <button onClick={() => setConfirmDelete(true)} style={styles.dangerBtn}>
-              <Trash2 size={16} style={{ marginRight: 6 }} /> Удалить эту сцену
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="sa-mitory-danger-subtle"
+            >
+              <Trash2 size={13} />
+              <span>Удалить сцену</span>
             </button>
           ) : (
             <div style={styles.confirmRow}>
-              <span style={{ fontSize: '0.84rem', fontWeight: 600 }}>Точно удалить сцену?</span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#fca5a5' }}>
+                Переместить сцену в корзину?
+              </span>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button
+                  type="button"
                   onClick={() => {
-                    deleteNode(nodeId);
-                    showToast('Сцена удалена', 'info');
+                    if (trashNodes) trashNodes([nodeId]);
+                    else deleteNode(nodeId);
                     onClose();
                   }}
                   style={styles.confirmDangerBtn}
                 >
                   Да, удалить
                 </button>
-                <button onClick={() => setConfirmDelete(false)} style={styles.smallBtn}>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="sa-mitory-action-btn"
+                  style={styles.actionBtn}
+                >
                   Отмена
                 </button>
               </div>
@@ -505,7 +579,7 @@ export default function SceneEditor({ nodeId, onClose, onSelectNode }) {
           )}
         </div>
       </div>
-    </div>
+    </aside>
   );
 }
 
@@ -513,50 +587,55 @@ const styles = {
   drawer: {
     position: 'fixed',
     right: 0,
-    top: 0,
+    top: 42,
     bottom: 0,
-    width: 'min(460px, 100vw)',
-    background: 'var(--panel-bg)',
-    color: 'var(--text-color)',
-    boxShadow: '-8px 0 30px rgba(0,0,0,0.35)',
-    borderLeft: '1px solid var(--node-border)',
+    width: 'min(440px, 100vw)',
+    background: '#0f172a',
+    color: '#f8fafc',
+    boxShadow: '-12px 0 36px rgba(0, 0, 0, 0.45)',
+    borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
     display: 'flex',
     flexDirection: 'column',
-    zIndex: 2200
+    zIndex: 45
   },
   header: {
-    padding: '14px 18px',
-    borderBottom: '1px solid var(--node-border)',
+    padding: '12px 16px',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    background: 'var(--bg-color)'
+    background: '#0f172a'
   },
   titleInput: {
-    fontSize: '1.1rem',
+    fontSize: '0.94rem',
     fontWeight: 700,
-    border: 'none',
-    background: 'transparent',
-    color: 'var(--text-color)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    background: '#1e293b',
+    color: '#f8fafc',
     width: '100%',
-    outline: 'none',
-    padding: 0
+    borderRadius: 7,
+    padding: '6px 10px',
+    boxSizing: 'border-box'
   },
   closeBtn: {
-    background: 'none',
-    border: 'none',
+    width: 28,
+    height: 28,
+    background: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
     cursor: 'pointer',
-    color: 'var(--text-color)',
-    padding: 6,
-    borderRadius: 6
+    color: '#cbd5e1',
+    borderRadius: 6,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   content: {
-    padding: '16px 18px 80px 18px',
+    padding: '14px 16px 64px 16px',
     overflowY: 'auto',
     flex: 1
   },
   section: {
-    marginBottom: 20
+    marginBottom: 18
   },
   sectionHeader: {
     display: 'flex',
@@ -564,231 +643,228 @@ const styles = {
     alignItems: 'center',
     marginBottom: 8
   },
+  sectionTitle: {
+    fontWeight: 700,
+    fontSize: '0.82rem',
+    color: '#e2e8f0',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6
+  },
   label: {
     display: 'block',
     marginBottom: 6,
-    fontSize: '0.8rem',
-    fontWeight: 600,
-    opacity: 0.8
+    fontSize: '0.76rem',
+    fontWeight: 700,
+    color: '#94a3b8',
+    letterSpacing: '0.01em'
   },
   typeBtn: {
-    padding: '7px 4px',
-    borderRadius: 8,
-    border: '1px solid var(--node-border)',
-    background: 'var(--bg-color)',
-    color: 'var(--text-color)',
-    fontSize: '0.75rem',
+    padding: '6px 4px',
+    borderRadius: 7,
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    background: '#1e293b',
+    color: '#cbd5e1',
+    fontSize: '0.72rem',
     fontWeight: 600,
-    cursor: 'pointer'
-  },
-  typeBtnActive: {
-    borderColor: '#2563eb',
-    background: 'rgba(37, 99, 235, 0.16)',
-    color: '#2563eb'
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    transition: 'all 0.15s'
   },
   notesArea: {
     width: '100%',
-    height: 76,
-    background: 'var(--bg-color)',
-    color: 'var(--text-color)',
-    border: '1px solid var(--node-border)',
+    height: 70,
+    background: '#1e293b',
+    color: '#f8fafc',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
     borderRadius: 8,
-    padding: 10,
+    padding: '8px 10px',
     fontFamily: 'inherit',
     resize: 'vertical',
     boxSizing: 'border-box',
-    fontSize: '0.88rem'
+    fontSize: '0.82rem',
+    lineHeight: 1.45
   },
   effectRow: {
     display: 'flex',
     gap: 6,
     alignItems: 'center',
     marginBottom: 6,
-    background: 'var(--bg-color)',
-    padding: 8,
+    background: 'rgba(30, 41, 59, 0.45)',
+    padding: 7,
     borderRadius: 8,
-    border: '1px solid var(--node-border)'
+    border: '1px solid rgba(255, 255, 255, 0.08)'
   },
   select: {
-    padding: '6px 8px',
+    padding: '5px 8px',
     borderRadius: 6,
-    border: '1px solid var(--node-border)',
-    background: 'var(--panel-bg)',
-    color: 'var(--text-color)',
-    fontSize: '0.8rem'
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    background: '#1e293b',
+    color: '#f8fafc',
+    fontSize: '0.78rem'
   },
   lineRow: {
-    marginBottom: 10,
-    background: 'var(--bg-color)',
-    padding: 10,
+    marginBottom: 8,
+    background: 'rgba(30, 41, 59, 0.4)',
+    padding: 9,
     borderRadius: 8,
-    border: '1px solid var(--node-border)'
+    border: '1px solid rgba(255, 255, 255, 0.08)'
   },
   charSelect: {
     flex: 1,
     padding: '5px 8px',
     borderRadius: 6,
-    border: '1px solid var(--node-border)',
-    background: 'var(--panel-bg)',
-    color: 'var(--text-color)',
-    fontSize: '0.82rem',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    background: '#1e293b',
+    color: '#f8fafc',
+    fontSize: '0.78rem',
     fontWeight: 600
   },
   lineText: {
     width: '100%',
     minHeight: 54,
     resize: 'vertical',
-    padding: 8,
+    padding: '7px 9px',
     borderRadius: 6,
-    border: '1px solid var(--node-border)',
-    background: 'var(--panel-bg)',
-    color: 'var(--text-color)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    background: '#1e293b',
+    color: '#f8fafc',
     fontFamily: 'inherit',
-    fontSize: '0.88rem',
+    fontSize: '0.82rem',
+    lineHeight: 1.45,
     boxSizing: 'border-box'
   },
-  miniIconBtn: {
-    background: 'none',
-    border: 'none',
-    color: 'var(--text-color)',
-    opacity: 0.65,
+  iconActionBtn: {
+    width: 26,
+    height: 26,
+    background: 'transparent',
+    border: '1px solid transparent',
+    color: '#94a3b8',
+    borderRadius: 6,
     cursor: 'pointer',
-    padding: 4
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0
   },
-  delBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#ef4444',
+  actionBtn: {
+    height: 27,
+    padding: '0 9px',
+    borderRadius: 6,
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    background: '#1e293b',
+    color: '#e2e8f0',
+    fontSize: '0.74rem',
+    fontWeight: 600,
     cursor: 'pointer',
-    padding: 4
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 5
   },
-  addBtn: {
+  fullWidthActionBtn: {
     width: '100%',
-    padding: 10,
-    background: 'var(--bg-color)',
-    border: '1px dashed var(--node-border)',
-    color: 'var(--text-color)',
-    borderRadius: 8,
+    height: 32,
+    padding: '0 10px',
+    background: '#1e293b',
+    border: '1px dashed rgba(255, 255, 255, 0.14)',
+    color: '#cbd5e1',
+    borderRadius: 7,
     cursor: 'pointer',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 6,
     fontWeight: 600,
-    fontSize: '0.86rem'
+    fontSize: '0.78rem'
   },
   branchItem: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
-    padding: 10,
+    padding: 9,
     borderRadius: 8,
-    background: 'var(--bg-color)',
-    border: '1px solid var(--node-border)',
-    marginBottom: 8
+    background: 'rgba(30, 41, 59, 0.4)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    marginBottom: 7
   },
   branchInput: {
     width: '100%',
-    padding: '6px 8px',
+    padding: '6px 9px',
     borderRadius: 6,
-    border: '1px solid var(--node-border)',
-    background: 'var(--panel-bg)',
-    color: 'var(--text-color)',
-    fontSize: '0.84rem',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    background: '#1e293b',
+    color: '#f8fafc',
+    fontSize: '0.8rem',
     boxSizing: 'border-box'
   },
   newBranchBox: {
     padding: 10,
     borderRadius: 8,
-    background: 'var(--bg-color)',
-    border: '1px dashed var(--node-border)'
+    background: 'rgba(30, 41, 59, 0.3)',
+    border: '1px dashed rgba(255, 255, 255, 0.12)'
   },
-  smallBtn: {
-    padding: '5px 10px',
-    borderRadius: 6,
-    border: '1px solid var(--node-border)',
-    background: 'var(--bg-color)',
-    color: 'var(--text-color)',
-    fontSize: '0.78rem',
-    cursor: 'pointer',
-    fontWeight: 600
-  },
-  smallPrimaryBtn: {
-    padding: '6px 12px',
-    borderRadius: 6,
-    border: 'none',
-    background: '#2563eb',
-    color: 'white',
-    fontSize: '0.8rem',
-    fontWeight: 700,
-    cursor: 'pointer'
+  imagePreviewWrap: {
+    position: 'relative',
+    borderRadius: 8,
+    overflow: 'hidden',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    background: '#1e293b'
   },
   uploadPlaceholder: {
-    border: '2px dashed var(--node-border)',
-    borderRadius: 10,
-    padding: '20px 12px',
+    border: '1px dashed rgba(255, 255, 255, 0.14)',
+    borderRadius: 8,
+    padding: '14px 12px',
     textAlign: 'center',
     display: 'flex',
-    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'var(--bg-color)'
+    gap: 8,
+    background: '#1e293b'
   },
   removeImgBtn: {
     position: 'absolute',
     top: 8,
     right: 8,
-    background: 'rgba(220, 38, 38, 0.85)',
-    border: 'none',
+    background: 'rgba(15, 23, 42, 0.85)',
+    border: '1px solid rgba(239, 68, 68, 0.45)',
+    color: '#f87171',
     borderRadius: 6,
-    padding: 6,
+    padding: 5,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center'
   },
-  stashBtn: {
-    width: '100%',
-    padding: 11,
-    background: 'rgba(37, 99, 235, 0.14)',
-    color: '#60a5fa',
-    border: '1px solid rgba(59, 130, 246, 0.45)',
-    borderRadius: 8,
-    cursor: 'pointer',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    fontWeight: 700
-  },
-  dangerBtn: {
-    width: '100%',
-    padding: 11,
-    background: 'rgba(239, 68, 68, 0.12)',
-    color: '#ef4444',
-    border: '1px solid #ef4444',
-    borderRadius: 8,
-    cursor: 'pointer',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    fontWeight: 700
+  footerActions: {
+    marginTop: 22,
+    paddingTop: 14,
+    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 8
   },
   confirmRow: {
+    gridColumn: '1 / -1',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 10,
+    padding: '8px 10px',
     borderRadius: 8,
-    background: 'rgba(239, 68, 68, 0.1)',
-    border: '1px solid #ef4444'
+    background: 'rgba(239, 68, 68, 0.08)',
+    border: '1px solid rgba(239, 68, 68, 0.35)'
   },
   confirmDangerBtn: {
-    padding: '6px 12px',
+    height: 27,
+    padding: '0 10px',
     borderRadius: 6,
-    border: 'none',
-    background: '#ef4444',
-    color: 'white',
+    border: '1px solid rgba(239, 68, 68, 0.5)',
+    background: 'rgba(239, 68, 68, 0.2)',
+    color: '#fca5a5',
     fontWeight: 700,
-    fontSize: '0.8rem',
+    fontSize: '0.75rem',
     cursor: 'pointer'
   }
 };

@@ -1,12 +1,12 @@
 [package]
-name = "story-architect-desktop"
-version = "4.0.0"
-description = "Story Architect Desktop App (Tauri v2)"
-authors = ["Story Architect Team"]
+name = "mitory"
+version = "0.2.0"
+description = "Mitory: Story Builder — Local-first visual novel and interactive narrative studio"
+authors = ["Mitory Team"]
 edition = "2021"
 
 [lib]
-name = "story_architect_desktop_lib"
+name = "mitory_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -14,6 +14,9 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rfd = "0.15"

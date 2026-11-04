@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStoryStore } from './store';
-import { X, Plus, Trash2, ToggleLeft, Hash } from 'lucide-react';
+import { X, Plus, Trash2, ToggleLeft, Hash, Database } from 'lucide-react';
 
 export default function VariablesManager({ onClose }) {
   const { variables, addVariable, updateVariable, deleteVariable, showToast } = useStoryStore();
@@ -20,8 +20,11 @@ export default function VariablesManager({ onClose }) {
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div style={styles.header}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.2rem' }}>🧩 Переменные, предметы и статы</h2>
-            <div style={{ fontSize: '0.78rem', opacity: 0.7 }}>
+            <h2 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Database size={20} color="#d97706" />
+              <span>Переменные, предметы и статы</span>
+            </h2>
+            <div style={{ fontSize: '0.78rem', opacity: 0.7, marginTop: 2 }}>
               Используются для условий на развилках и триггеров в сценах
             </div>
           </div>

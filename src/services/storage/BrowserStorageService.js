@@ -59,11 +59,6 @@ export async function idbSet(key, value) {
       req.onerror = () => reject(req.error);
     });
     db.close();
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-      // Игнорируем переполнение localStorage при успешной записи в IndexedDB
-    }
     return true;
   } catch {
     try {
@@ -83,7 +78,7 @@ export function buildStandaloneGameHtml(projectData) {
   const enrichedProject = {
     ...projectData,
     assets,
-    nodes: (projectData.nodes || []).map((n) => ({
+    nodes: (projectData.nodes || []).filter(n => n && n.type !== 'regionNode').map((n) => ({
       ...n,
       data: {
         ...n.data,
@@ -100,7 +95,7 @@ export function buildStandaloneGameHtml(projectData) {
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>${title} — Story Architect Game</title>
+<title>${title} — Mitory Game</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; }
@@ -161,8 +156,8 @@ function applyEffects(effects) {
       if (ef.action === 'toggle') vars[v.id] = !vars[v.id];
       else vars[v.id] = ef.value === true || ef.value === 'true';
     } else {
-      const cur = Number(vars[v.id] || 0);
-      const val = Number(ef.value || 0);
+      const cur = Number.isFinite(Number(vars[v.id])) ? Number(vars[v.id]) : 0;
+      const val = Number.isFinite(Number(ef.value)) ? Number(ef.value) : 0;
       if (ef.action === 'add') vars[v.id] = cur + val;
       else if (ef.action === 'sub') vars[v.id] = cur - val;
       else vars[v.id] = val;
@@ -173,12 +168,17 @@ ${getConditions.toString()}
 ${evaluateConditions.toString()}
 function checkCondition(cond) {
   if (!cond || !cond.varId) return true;
-  if (!(STORY.variables || []).some(v => v.id === cond.varId)) return false;
+  const v = (STORY.variables || []).find(x => x.id === cond.varId);
+  if (!v) return false;
   const cur = vars[cond.varId];
+  if (v.type === 'boolean') {
+    const isTargetTrue = cond.value === true || cond.value === 'true';
+    return (cond.operator === '!=') ? Boolean(cur) !== isTargetTrue : Boolean(cur) === isTargetTrue;
+  }
   const target = cond.value;
   switch (cond.operator || '==') {
-    case '==': return cur == target;
-    case '!=': return cur != target;
+    case '==': return Number(cur) === Number(target);
+    case '!=': return Number(cur) !== Number(target);
     case '>=': return Number(cur) >= Number(target);
     case '>': return Number(cur) > Number(target);
     case '<=': return Number(cur) <= Number(target);
@@ -248,7 +248,8 @@ function render() {
     const ok = Boolean(target) && evaluateConditions(conditions, checkCondition);
     const button = document.createElement('button'); button.className = 'choice-btn'; button.disabled = !ok;
     const reasons = conditions.map(c => ((STORY.variables || []).find(v => v.id === c.varId)?.name || c.varId) + ' ' + c.operator + ' ' + c.value).join(' · ');
-    button.textContent = (edge.label || target?.data?.label || 'Далее →') + (!ok ? ' (Недоступно: ' + (reasons || 'сцена не найдена') + ')' : '');
+    const cleanLabel = String(edge.label || '').replace(new RegExp('\\s*\\[🔒[^\\]]*\\]', 'g'), '').trim() || target?.data?.label || 'Далее →';
+    button.textContent = cleanLabel + (!ok ? ' (Недоступно: ' + (reasons || 'сцена не найдена') + ')' : '');
     button.onclick = () => {
       if (!target || !evaluateConditions(conditions, checkCondition)) return;
       applyEffects(edge.data?.effects); enterScene(target.id);
@@ -279,7 +280,7 @@ export class BrowserStorageService {
     return new Promise((resolve, reject) => {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = '.json,.story.json,application/json';
+      input.accept = '.mitory.json,.story.json,.json,application/json';
       input.oncancel = () => resolve(null);
       input.onchange = async () => {
         try {
@@ -363,7 +364,7 @@ export class BrowserStorageService {
     const a = document.createElement('a');
     a.href = url;
     const safeName = (project?.projectMeta?.title || 'story_canvas').replace(/[^a-zA-Zа-яА-Я0-9_-]/g, '_');
-    a.download = `${safeName}.story.json`;
+    a.download = `${safeName}.mitory.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

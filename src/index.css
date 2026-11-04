@@ -3,12 +3,18 @@
   --dots-color: #cbd5e1;
   --node-bg: #ffffff;
   --node-border: #e2e8f0;
+  --panel-border: #e2e8f0;
   --text-color: #0f172a;
   --panel-bg: #ffffff;
   --panel-text: #0f172a;
   --decision-bg: #fef3c7;
   --decision-border: #f59e0b;
+  --color: 59, 130, 246;
   --region-color: #3b82f6;
+  --region-border: rgba(59, 130, 246, 0.5);
+  --control-height: 36px;
+  --control-radius: 8px;
+  --modal-radius: 16px;
 }
 
 .edge-label-pill {
@@ -45,17 +51,123 @@
   white-space: normal;
 }
 
-/* Сюжетные области всегда лежат под сценами и линиями, не блокируя клики по узлам внутри */
+/* Сюжетные области лежат над сеткой (<Background />), но под узлами сцен (z-index: 0 vs 10) */
 .react-flow__node-regionNode {
-  z-index: -1 !important;
-  pointer-events: none !important;
+  z-index: 0 !important;
+  pointer-events: all !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
 }
 
 .react-flow__node-storyNode {
+  z-index: 10 !important;
+}
+
+/* Контрастная рамка выделения области (Selection Marquee) */
+.react-flow__selection {
+  background: rgba(59, 130, 246, 0.22) !important;
+  border: 1.5px solid #3b82f6 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.35) !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
+  display: block !important;
+  opacity: 1 !important;
+  box-sizing: border-box !important;
+}
+
+/* Скрываем уродливую общую рамку вокруг уже выбранных элементов */
+.react-flow__nodesselection-rect {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  pointer-events: none !important;
+}
+
+/* При перетаскивании делаем оригинальные ноды на холсте прозрачными (эффект "подняты в воздух") */
+.react-flow__node.dragging,
+.react-flow__node.selected.dragging,
+.react-flow__node.selected.is-tactile-dragging,
+.react-flow__node.is-tactile-dragging {
+  opacity: 0.15 !important;
+  filter: blur(1px);
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.react-flow__node.selected {
+  outline: none !important;
+}
+
+/* Тактильный стек перетаскивания (Apple / Samsung Stack Style) */
+.sa-tactile-stack-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform;
+}
+
+.sa-tactile-stack-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 210px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--node-bg, #1e293b);
+  color: var(--text-color, #f8fafc);
+  border: 1.5px solid #3b82f6;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.18);
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+}
+
+.sa-tactile-stack-badge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  min-width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.6);
+  border: 2px solid var(--panel-bg, #0f172a);
+  letter-spacing: 0.03em;
   z-index: 10;
+}
+
+/* Peeking Pocket анимация */
+.sa-peeking-pocket {
+  transition: transform 0.36s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Дизайн-токены модальных карточек и элементов форм (v0.2.0) */
+.sa-modal-card {
+  border-radius: 16px;
+}
+
+input:not([type="checkbox"]):not([type="color"]):not([type="file"]),
+select,
+.sa-form-btn {
+  height: 36px;
+  box-sizing: border-box;
+  border-radius: 8px;
+}
+
+textarea {
+  box-sizing: border-box;
+  border-radius: 8px;
 }
 
 body.theme-light {
@@ -63,6 +175,7 @@ body.theme-light {
   --dots-color: #cbd5e1;
   --node-bg: #ffffff;
   --node-border: #e2e8f0;
+  --panel-border: #cbd5e1;
   --text-color: #0f172a;
   --panel-bg: #ffffff;
   --panel-text: #0f172a;
@@ -75,6 +188,7 @@ body.theme-dark {
   --dots-color: #334155;
   --node-bg: #1e293b;
   --node-border: #334155;
+  --panel-border: #334155;
   --text-color: #f8fafc;
   --panel-bg: #1e293b;
   --panel-text: #f8fafc;
@@ -87,6 +201,7 @@ body.theme-soft {
   --dots-color: #d3cbb7;
   --node-bg: #eee8d5;
   --node-border: #d3cbb7;
+  --panel-border: #d3cbb7;
   --text-color: #475b63;
   --panel-bg: #eee8d5;
   --panel-text: #475b63;
@@ -184,25 +299,36 @@ body, html, #root {
 }
 
 button {
-  transition: opacity 0.15s, transform 0.1s;
+  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
   font-family: inherit;
+  box-sizing: border-box;
+  border-radius: 8px;
 }
 
 button:hover:not(:disabled) {
-  opacity: 0.9;
+  opacity: 0.94;
 }
 
 button:active:not(:disabled) {
   transform: scale(0.98);
 }
 
+.sa-play-btn:hover:not(:disabled) {
+  box-shadow: 0 0 22px rgba(16, 185, 129, 0.6) !important;
+}
+
 input, textarea, select {
   background-color: var(--bg-color);
   color: var(--text-color);
   border: 1px solid var(--node-border);
-  padding: 8px;
+  padding: 0 10px;
   border-radius: 8px;
+  box-sizing: border-box;
   font-family: inherit;
+}
+
+textarea {
+  padding: 8px 10px;
 }
 
 input:focus, textarea:focus, select:focus {
@@ -251,7 +377,410 @@ div[style*="overflowX: 'auto'"]::-webkit-scrollbar,
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+
+/* Подкарманы (Папки / Группы внутри Stash) и Мульти-выделение */
+.sa-stash-folder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--panel-border, #334155);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sa-stash-folder-header:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+}
+
+.sa-stash-folder-header.is-drag-over {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+}
+
+.sa-stash-selection-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.18);
+  border: 1px solid #3b82f6;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #93c5fd;
+  margin-bottom: 8px;
+}
+
+
+/* Кастомный безрамочный Titlebar (Frameless Titlebar Tauri v2) */
+.sa-frameless-titlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel-bg, #0f172a);
+  border-bottom: 1px solid var(--panel-border, rgba(51, 65, 85, 0.45));
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sa-titlebar-left {
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+  height: 100%;
+}
+
+.sa-titlebar-branding {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-color, #f8fafc);
+}
+
+.sa-titlebar-title {
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+
+.sa-titlebar-center {
+  flex: 1;
+  height: 100%;
+}
+
+.sa-titlebar-right {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.sa-settings-titlebar-btn {
+  height: 26px;
+  padding: 0 9px;
+  margin-right: 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.1));
+  color: var(--text-color, #f8fafc);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  -webkit-app-region: no-drag !important;
+  app-region: no-drag !important;
+  pointer-events: auto !important;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sa-settings-titlebar-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.sa-window-controls {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  -webkit-app-region: no-drag !important;
+  app-region: no-drag !important;
+  pointer-events: auto !important;
+  z-index: 60;
+}
+
+.sa-win-btn {
+  width: 44px;
+  height: 36px;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--text-color, #94a3b8);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  -webkit-app-region: no-drag !important;
+  app-region: no-drag !important;
+  pointer-events: auto !important;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sa-win-btn:hover:not(.sa-win-close) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+.sa-win-btn.sa-win-close:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+.sa-win-btn:active {
+  transform: none !important;
+  opacity: 0.85 !important;
+}
+
+/* Индикатор ИИ (микро-светодиод 7px) на Zen HUD */
+.sa-mcp-led-dot {
+  width: 7px;
+  height: 7px;
+  min-width: 7px;
+  min-height: 7px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0 3px;
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  display: inline-block;
+  pointer-events: auto;
+  transition: transform 0.2s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.sa-mcp-led-dot:hover {
+  transform: scale(1.4);
+}
+
+.sa-mcp-led-dot.disconnected {
+  display: none !important;
+}
+
+.sa-mcp-led-dot.connected {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.9), 0 0 12px rgba(16, 185, 129, 0.45);
+}
+
+.sa-mcp-led-dot.active {
+  background: linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899);
+  background-size: 200% 200%;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.95), 0 0 16px rgba(139, 92, 246, 0.8);
+  animation: mcpNeonPulse 1.2s ease-in-out infinite alternate, mcpGradientShift 2.5s linear infinite;
+}
+
+@keyframes mcpNeonPulse {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 6px rgba(6, 182, 212, 0.6), 0 0 12px rgba(139, 92, 246, 0.4);
+  }
+  100% {
+    transform: scale(1.3);
+    box-shadow: 0 0 12px rgba(6, 182, 212, 1), 0 0 24px rgba(236, 72, 153, 0.85);
+  }
+}
+
+@keyframes mcpGradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+
+/* Адаптивный верхний Zen HUD и выпадающее меню «Ещё (...)» */
+.sa-top-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  overflow: visible;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.sa-hud-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.sa-hud-chip {
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  flex-shrink: 0;
+}
+
+.sa-hud-chip:hover {
+  border-color: #3b82f6 !important;
+}
+
+.sa-hud-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--text-color);
+  font-size: 0.69rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sa-hud-more-btn {
+  flex-shrink: 0;
+}
+
+.sa-hud-more-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 230px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--panel-bg, #1e293b);
+  border: 1px solid var(--panel-border, #334155);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 120;
+}
+
+.sa-hud-menu-section-label {
+  padding: 4px 10px 2px 10px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+}
+
+.sa-hud-menu-item {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-color, #f8fafc);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.14s ease;
+}
+
+.sa-hud-menu-item:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.sa-hud-menu-item:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.sa-hud-menu-divider {
+  height: 1px;
+  background: var(--panel-border, #334155);
+  margin: 4px 6px;
+}
+
+@media (max-width: 1280px) {
+  .sa-top-toolbar {
+    gap: 4px;
+    padding: 5px 8px !important;
+  }
+  .sa-hud-chip {
+    padding: 0 8px !important;
+    font-size: 0.76rem !important;
+  }
+}
+
+@media (max-width: 1020px) {
+  .sa-hud-label {
+    display: none;
+  }
+}
+
+/* Виджет координат и компас возврата к графу */
+.sa-coords-hud {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-family: monospace;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  user-select: none;
+  pointer-events: all;
+}
+
+.sa-compass-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, transform 0.15s, background 0.15s;
+}
+
+.sa-compass-btn:hover {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.sa-compass-btn.pulse-blue {
+  color: #ffffff;
+  background: #2563eb;
+  animation: pulseBlueGlow 1.8s infinite;
+}
+
+@keyframes pulseBlueGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+}
+
 @media (max-width: 768px) {
+  .sa-coords-hud {
+    bottom: 72px;
+    right: 12px;
+  }
   .hide-mobile {
     display: none !important;
   }
@@ -272,4 +801,432 @@ div[style*="overflowX: 'auto'"]::-webkit-scrollbar,
   #root {
     padding: 0 !important;
   }
+}
+
+/* ==========================================================================
+   UNIFIED PRO MONOLITHIC HEADER (42px), 3-COLUMN FLEX, DROPUP & TRASH ZONE
+   ========================================================================== */
+
+.sa-unified-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 42px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel-bg, #0f172a);
+  border-bottom: 1px solid var(--panel-border, rgba(51, 65, 85, 0.45));
+  user-select: none;
+  -webkit-user-select: none;
+  box-sizing: border-box;
+  padding: 0 6px 0 12px;
+  gap: 8px;
+}
+
+.sa-unified-left {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sa-unified-branding {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-color, #f8fafc);
+  font-weight: 800;
+  font-size: 0.84rem;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.sa-unified-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--panel-border, rgba(51, 65, 85, 0.5));
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.sa-unified-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  position: relative;
+}
+
+.sa-unified-project-title {
+  height: 28px;
+  width: clamp(90px, 11vw, 160px);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 6px;
+  border: 1px solid var(--node-border, rgba(51, 65, 85, 0.6));
+  background: var(--bg-color, rgba(15, 23, 42, 0.6));
+  color: var(--text-color, #f8fafc);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0 8px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.sa-unified-project-title:focus {
+  border-color: #3b82f6;
+  background: var(--panel-bg, #0f172a);
+}
+
+.sa-unified-dirty-mark {
+  color: #f59e0b;
+  font-weight: 900;
+  font-size: 1.1rem;
+  line-height: 1;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.sa-unified-center {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+}
+
+.sa-unified-right {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  height: 100%;
+  padding-right: 2px;
+}
+
+.sa-unified-btn {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.1));
+  color: var(--text-color, #f8fafc);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag !important;
+  app-region: no-drag !important;
+}
+
+.sa-unified-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sa-unified-split-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.sa-unified-split-main {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+  padding: 0 9px;
+}
+
+.sa-unified-split-arrow {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding: 0 5px;
+}
+
+.sa-unified-node-menu,
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 175px;
+  padding: 5px;
+  border-radius: 10px;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  background: var(--panel-bg, #0f172a);
+  border: 1px solid var(--panel-border, #334155);
+  transform-origin: top center;
+}
+
+/* Dropup support when inside bottom-dock */
+.bottom-dock .dropdown-menu,
+.sa-bottom-dock .sa-unified-node-menu {
+  bottom: calc(100% + 8px);
+  top: auto;
+  transform-origin: bottom center;
+}
+
+.sa-unified-chip {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--node-border, rgba(51, 65, 85, 0.6));
+  color: var(--text-color, #f8fafc);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag !important;
+  app-region: no-drag !important;
+}
+
+.sa-unified-chip:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.sa-unified-chip.is-active {
+  background: rgba(59, 130, 246, 0.16);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.sa-unified-count {
+  font-size: 0.69rem;
+  font-weight: 800;
+  opacity: 0.85;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* Adaptive chip labels: hide text on narrower windows (900px - 1180px) to prevent overlap */
+@media (max-width: 1180px) {
+  .sa-chip-label {
+    display: none;
+  }
+}
+
+.sa-unified-play-btn {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border: 1px solid #3b82f6;
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+  transition: all 0.15s;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag !important;
+  app-region: no-drag !important;
+}
+
+.sa-unified-play-btn:hover {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Stash / Palette permanent 42px positioning under monolithic header */
+.sa-node-palette,
+.sa-node-palette.header-unified {
+  top: 42px !important;
+  height: calc(100vh - 42px) !important;
+}
+
+/* ==========================================================================
+   BOTTOM BAR DOCK (FLOATING CAPSULE DOCK)
+   ========================================================================== */
+
+.sa-bottom-dock,
+.bottom-dock {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 14px;
+  background: var(--panel-bg, rgba(15, 23, 42, 0.92));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--panel-border, #334155);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.45);
+  animation: sa-dock-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes sa-dock-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 14px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ==========================================================================
+   SEGMENTED PILL BUTTONS (SETTINGS MODAL TOOLBAR CUSTOMIZER)
+   ========================================================================== */
+
+.sa-seg-pill-group {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid var(--panel-border, #334155);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.sa-seg-pill-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-color, #cbd5e1);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.sa-seg-pill-btn:hover:not(.is-active) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sa-seg-pill-btn.is-active {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.38);
+}
+
+/* ==========================================================================
+   TRASH DROP ZONE ANIMATION
+   ========================================================================== */
+
+@keyframes sa-trash-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+.sa-trash-icon-pulse {
+  animation: sa-trash-pulse 0.65s infinite ease-in-out;
+}
+
+/* ==========================================================================
+   EDGE LABEL Z-INDEX PRIORITY & SCENE EDITOR MITORY DESIGN CODE
+   ========================================================================== */
+
+.sa-edge-label-wrap,
+.edge-label-pill {
+  z-index: 100 !important;
+  pointer-events: all !important;
+}
+
+.sa-mitory-field {
+  background: #1e293b !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
+  outline: none !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sa-mitory-field:focus {
+  outline: none !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 1px #3b82f6 !important;
+}
+
+.sa-mitory-action-btn {
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.sa-mitory-action-btn:hover {
+  background: rgba(59, 130, 246, 0.16) !important;
+  border-color: rgba(59, 130, 246, 0.45) !important;
+}
+
+.sa-mitory-subtle-btn {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.sa-mitory-subtle-btn:hover {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+
+.sa-mitory-danger-subtle {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.sa-mitory-danger-subtle:hover {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #f87171;
 }

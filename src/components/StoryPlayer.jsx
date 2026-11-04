@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Flag, RotateCcw, X } from 'lucide-react';
+import { CheckCircle2, Flag, RotateCcw, X, Lock, MapPin, ArrowRight } from 'lucide-react';
 import { useStoryStore, assetStorage } from '../store';
 import { evaluateConditions, getConditions } from '../graph/conditions';
 import './StoryPlayer.css';
 
-export default function StoryPlayer({ onClose }) {
+export default function StoryPlayer({ onClose, initialNodeId = null }) {
   const { nodes, edges, characters, variables } = useStoryStore();
   const [currentVars, setCurrentVars] = useState({});
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -22,8 +22,8 @@ export default function StoryPlayer({ onClose }) {
               ? !next[variable.id]
               : effect.value === true || effect.value === 'true';
         } else {
-          const value = Number(effect.value ?? 0);
-          const currentValue = Number(next[variable.id] ?? 0);
+          const value = Number.isFinite(Number(effect.value)) ? Number(effect.value) : 0;
+          const currentValue = Number.isFinite(Number(next[variable.id])) ? Number(next[variable.id]) : 0;
           next[variable.id] =
             effect.action === 'add'
               ? currentValue + value
@@ -47,7 +47,9 @@ export default function StoryPlayer({ onClose }) {
       variables.map((variable) => [variable.id, variable.initialValue])
     );
     const start =
-      storyNodes.find((node) => node.data?.type === 'start') || storyNodes[0];
+      (initialNodeId && storyNodes.find((n) => n.id === initialNodeId)) ||
+      storyNodes.find((node) => node.data?.type === 'start') ||
+      storyNodes[0];
     setDialogueIndex(0);
     if (!start) {
       setCurrentNodeId(null);
@@ -56,7 +58,7 @@ export default function StoryPlayer({ onClose }) {
     }
     setCurrentVars(applyEffects(start.data?.effects, initial));
     setCurrentNodeId(start.id);
-  }, [applyEffects, storyNodes, variables]);
+  }, [applyEffects, initialNodeId, storyNodes, variables]);
 
   useEffect(() => {
     let active = true;
@@ -241,7 +243,8 @@ export default function StoryPlayer({ onClose }) {
       <header className="vn-hud">
         <div className="vn-hud-left">
           <button type="button" className="vn-exit-btn" onClick={onClose}>
-            <X size={16} /> ✕ Выйти в редактор
+            <X size={16} />
+            <span>Выйти в редактор</span>
           </button>
         </div>
 
@@ -266,8 +269,8 @@ export default function StoryPlayer({ onClose }) {
             {choices.map(({ edge, ok, reasons }, index) => {
               const cleanLabel =
                 String(edge.label || '')
-                  .replace(/\s*\[🔒[^\]]*\]/g, '')
-                  .trim() || 'Далее →';
+                  .replace(/\s*\[[^\]]*\]/g, '')
+                  .trim() || 'Далее';
               return (
                 <button
                   type="button"
@@ -281,8 +284,9 @@ export default function StoryPlayer({ onClose }) {
                     {cleanLabel}
                   </span>
                   {reasons.length > 0 ? (
-                    <span className="vn-choice-req-locked">
-                      [ 🔒 Требуется: {reasons.join(' · ')} ]
+                    <span className="vn-choice-req-locked" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      <Lock size={12} />
+                      <span>Требуется: {reasons.join(' · ')}</span>
                     </span>
                   ) : (
                     <span className="vn-choice-req-ok">
@@ -324,7 +328,8 @@ export default function StoryPlayer({ onClose }) {
         {currentNode && (
           <div className="vn-location-row">
             <div className="vn-location-badge">
-              <span>📍 {currentNode.data?.label || 'Локация'}</span>
+              <MapPin size={14} color="#60a5fa" />
+              <span>{currentNode.data?.label || 'Локация'}</span>
             </div>
             {currentNode.data?.type === 'ending' && (
               <div className="vn-ending-pill">
@@ -358,8 +363,8 @@ export default function StoryPlayer({ onClose }) {
               </div>
               <div className="vn-dialogue-text">
                 {displayedLine
-                  ? displayedLine.text || '…'
-                  : currentNode.data?.notes || currentNode.data?.label || '…'}
+                  ? displayedLine.text || '...'
+                  : currentNode.data?.notes || currentNode.data?.label || '...'}
               </div>
             </div>
 
@@ -381,7 +386,8 @@ export default function StoryPlayer({ onClose }) {
                     advanceDialogue();
                   }}
                 >
-                  Далее →
+                  <span>Далее</span>
+                  <ArrowRight size={14} />
                 </button>
               )}
             </div>

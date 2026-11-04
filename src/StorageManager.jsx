@@ -8,7 +8,7 @@ import {
 } from './store';
 import {
   X, Download, Upload, Database, FolderSync,
-  Cloud, PlusCircle, Trash2, RefreshCw, Gamepad2, FileCode, LogIn, CheckCircle2, FilePlus2, Castle, Rocket
+  Cloud, Trash2, Gamepad2, FileCode, FilePlus2, Castle, Rocket
 } from 'lucide-react';
 
 const SLOTS_KEY_PREFIX = 'story-slot-v4-';
@@ -51,7 +51,7 @@ export default function StorageManager({
     const data = getSerializableData();
     const result = await storageService.exportJson(data);
     if (result && !result.success) { if (!result.cancelled) showToast(result.error || 'Ошибка экспорта', 'error'); return; }
-    showToast('Файл полотна (.story.json) экспортирован', 'success');
+    showToast('Файл полотна (.mitory.json) экспортирован', 'success');
   };
 
   const handleDownloadPlayableHtml = async () => {
@@ -93,8 +93,8 @@ export default function StorageManager({
     }
     try {
       const handle = await window.showSaveFilePicker({
-        suggestedName: `${canvasTitle || 'story_project'}.story.json`,
-        types: [{ description: 'Story Architect JSON', accept: { 'application/json': ['.json'] } }]
+        suggestedName: `${canvasTitle || 'mitory_project'}.mitory.json`,
+        types: [{ description: 'Mitory Project JSON', accept: { 'application/json': ['.json'] } }]
       });
       const writable = await handle.createWritable();
       await writable.write(JSON.stringify(getSerializableData(), null, 2));
@@ -156,18 +156,19 @@ export default function StorageManager({
         </div>
 
         <div style={styles.tabBar}>
-
           <button
             onClick={() => setActiveTab('slots')}
             style={{ ...styles.tabBtn, ...(activeTab === 'slots' ? styles.tabBtnActive : {}) }}
           >
-            💾 Слоты и Шаблоны
+            <Database size={15} />
+            <span>Слоты и Шаблоны</span>
           </button>
           <button
             onClick={() => setActiveTab('export')}
             style={{ ...styles.tabBtn, ...(activeTab === 'export' ? styles.tabBtnActive : {}) }}
           >
-            🎮 Экспорт и Файлы
+            <Gamepad2 size={16} />
+            <span>Экспорт и Файлы</span>
           </button>
         </div>
 
@@ -287,7 +288,7 @@ export default function StorageManager({
                     </div>
                   </div>
                   <button onClick={handleDownloadJson} style={styles.primaryBtn}>
-                    <Download size={16} /> Скачать .json
+                    <Download size={16} /> Скачать .mitory.json
                   </button>
                 </div>
               </div>
@@ -315,7 +316,7 @@ export default function StorageManager({
                 </div>
                 <input
                   type="file"
-                  accept=".json,application/json"
+                  accept=".mitory.json,.story.json,.json,application/json"
                   ref={fileInputRef}
                   style={{ display: 'none' }}
                   onChange={(e) => processFile(e.target.files?.[0])}
@@ -401,7 +402,11 @@ const styles = {
     cursor: 'pointer',
     fontWeight: 600,
     fontSize: '0.86rem',
-    opacity: 0.68
+    opacity: 0.68,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6
   },
   tabBtnActive: {
     opacity: 1,
@@ -411,47 +416,6 @@ const styles = {
   content: {
     padding: 20,
     overflowY: 'auto'
-  },
-  authBanner: {
-    padding: 16,
-    borderRadius: 12,
-    background: 'rgba(37, 99, 235, 0.1)',
-    border: '1px solid rgba(37, 99, 235, 0.3)',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 14,
-    flexWrap: 'wrap'
-  },
-  googleConnectBtn: {
-    padding: '10px 16px',
-    borderRadius: 8,
-    border: 'none',
-    background: '#2563eb',
-    color: '#fff',
-    fontWeight: 600,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8
-  },
-  userBar: {
-    padding: '10px 14px',
-    borderRadius: 10,
-    background: 'rgba(22, 163, 74, 0.1)',
-    border: '1px solid rgba(22, 163, 74, 0.25)',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  smallLinkBtn: {
-    background: 'transparent',
-    border: '1px solid var(--node-border)',
-    color: 'var(--text-color)',
-    padding: '4px 10px',
-    borderRadius: 6,
-    fontSize: '0.78rem',
-    cursor: 'pointer'
   },
   card: {
     background: 'var(--bg-color)',
@@ -471,22 +435,6 @@ const styles = {
     opacity: 0.72,
     marginTop: 2,
     lineHeight: 1.4
-  },
-  label: {
-    display: 'block',
-    fontSize: '0.78rem',
-    fontWeight: 600,
-    marginBottom: 4,
-    opacity: 0.8
-  },
-  input: {
-    width: '100%',
-    padding: '9px 12px',
-    borderRadius: 8,
-    border: '1px solid var(--node-border)',
-    background: 'var(--panel-bg)',
-    color: 'var(--text-color)',
-    boxSizing: 'border-box'
   },
   dropZone: {
     border: '2px dashed var(--node-border)',
@@ -509,21 +457,6 @@ const styles = {
     alignItems: 'center',
     gap: 10,
     flexWrap: 'wrap'
-  },
-  activeBadge: {
-    fontSize: '0.7rem',
-    padding: '2px 7px',
-    borderRadius: 999,
-    background: 'rgba(37, 99, 235, 0.15)',
-    color: '#2563eb'
-  },
-  emptyBox: {
-    padding: 20,
-    borderRadius: 10,
-    border: '1px dashed var(--node-border)',
-    textAlign: 'center',
-    fontSize: '0.84rem',
-    opacity: 0.7
   },
   confirmBox: {
     marginTop: 8,
@@ -597,15 +530,5 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center'
-  },
-  iconBtn: {
-    background: 'transparent',
-    border: '1px solid var(--node-border)',
-    color: 'var(--text-color)',
-    borderRadius: 8,
-    padding: 6,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center'
   }
 };

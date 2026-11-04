@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Story Architect",
-  "version": "0.1.0",
-  "identifier": "com.storyarchitect.app",
+  "productName": "Mitory",
+  "version": "0.2.0",
+  "identifier": "com.staer.mitory",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:5173",
@@ -12,15 +12,19 @@
   "app": {
     "windows": [
       {
-        "title": "Story Architect — Визуальный редактор нелинейных историй",
+        "title": "Mitory: Story Builder",
         "width": 1366,
         "height": 840,
         "minWidth": 900,
         "minHeight": 600,
         "resizable": true,
-        "fullscreen": false,
+        "fullscreen": true,
+        "dragDropEnabled": false,
         "backgroundColor": "#0f172a",
-        "theme": "Dark"
+        "theme": "Dark",
+        "decorations": false,
+        "label": "main",
+        "shadow": true
       }
     ],
     "security": {
@@ -30,6 +34,30 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["mtrsb"],
+        "name": "Mitory Story Project",
+        "description": "Mitory Story Builder Project File",
+        "role": "Editor",
+        "mimeType": "application/x-mitory-story"
+      }
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ2NUQ3RDI2OTBERkMyQTUKUldTbHd0K1FKbjFkMWhLWjhScy9GWHYzOThMZFpTSWdVdEFucG1odndxUXV1bHNLU0QxV0t4KzYK",
+      "endpoints": [
+        "https://github.com/staerput-creator/story-architect-desktop/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

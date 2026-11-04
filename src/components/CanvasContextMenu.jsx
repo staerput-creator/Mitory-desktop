@@ -1,23 +1,40 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useReactFlow } from '@xyflow/react';
+import {
+  Play,
+  PlusSquare,
+  GitFork,
+  Flag,
+  Sparkles,
+  Map as MapIcon,
+  LayoutGrid,
+  Compass,
+  Save,
+  Database
+} from 'lucide-react';
+import { useStoryStore } from '../store';
+import { getTranslation } from '../i18n/translations';
 
 export default function CanvasContextMenu({
   menu,
   onClose,
   onSpawnNode,
+  onOpenCustomNodeModal,
   onSpawnRegion,
   onAutoLayout,
   onSaveProject,
-  onOpenVariables
+  onOpenVariables,
+  onPlayFromNode
 }) {
   const { fitView, screenToFlowPosition } = useReactFlow();
+  const language = useStoryStore((s) => s.language || 'ru');
+  const t = getTranslation(language);
   const menuRef = useRef(null);
 
-  // Автоматическая коррекция выхода за границы экрана (без синхронного setState в эффекте)
   const coords = useMemo(() => {
     if (!menu) return { x: 0, y: 0 };
-    const menuWidth = 272;
-    const menuHeight = 336;
+    const menuWidth = 278;
+    const menuHeight = 408;
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
 
@@ -27,7 +44,6 @@ export default function CanvasContextMenu({
     };
   }, [menu]);
 
-  // Закрытие по клику в любое другое место, скроллу или клавише Escape
   useEffect(() => {
     if (!menu) return;
     const handlePointerDown = (e) => {
@@ -69,21 +85,50 @@ export default function CanvasContextMenu({
     <div
       ref={menuRef}
       role="menu"
-      aria-label="Контекстное меню холста"
+      aria-label={t.contextMenu.ariaLabel}
       onContextMenu={(e) => e.preventDefault()}
+      className="sa-modal-card"
       style={{
         ...styles.menu,
         left: coords.x,
         top: coords.y
       }}
     >
+      {menu?.targetNodeId && onPlayFromNode && (
+        <button
+          type="button"
+          role="menuitem"
+          style={{ ...styles.item, background: 'rgba(16, 185, 129, 0.16)', color: '#34d399' }}
+          onClick={() => handleAction(() => onPlayFromNode(menu.targetNodeId))}
+        >
+          <span style={styles.itemLabel}>
+            <Play size={14} color="#10b981" fill="#10b981" />
+            <span style={{ fontWeight: 700 }}>{language === 'en' ? 'Play from here' : 'Играть отсюда'}</span>
+          </span>
+        </button>
+      )}
+      <button
+        type="button"
+        role="menuitem"
+        style={styles.item}
+        onClick={() => handleAction(() => onSpawnNode('start', getFlowPosition()))}
+      >
+        <span style={styles.itemLabel}>
+          <Play size={14} color="#10b981" fill="#10b981" />
+          <span>{t.contextMenu.spawnStart}</span>
+        </span>
+      </button>
+
       <button
         type="button"
         role="menuitem"
         style={styles.item}
         onClick={() => handleAction(() => onSpawnNode('scene', getFlowPosition()))}
       >
-        <span>➕ Создать сцену здесь</span>
+        <span style={styles.itemLabel}>
+          <PlusSquare size={15} color="#3b82f6" />
+          <span>{t.contextMenu.spawnScene}</span>
+        </span>
       </button>
 
       <button
@@ -92,7 +137,10 @@ export default function CanvasContextMenu({
         style={styles.item}
         onClick={() => handleAction(() => onSpawnNode('decision', getFlowPosition()))}
       >
-        <span>🔀 Создать развилку здесь</span>
+        <span style={styles.itemLabel}>
+          <GitFork size={15} color="#f59e0b" />
+          <span>{t.contextMenu.spawnDecision}</span>
+        </span>
       </button>
 
       <button
@@ -101,7 +149,31 @@ export default function CanvasContextMenu({
         style={styles.item}
         onClick={() => handleAction(() => onSpawnNode('ending', getFlowPosition()))}
       >
-        <span>🏁 Создать финал здесь</span>
+        <span style={styles.itemLabel}>
+          <Flag size={15} color="#8b5cf6" />
+          <span>{t.contextMenu.spawnEnding}</span>
+        </span>
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        style={styles.item}
+        onClick={() =>
+          handleAction(() => {
+            const pos = getFlowPosition();
+            if (onOpenCustomNodeModal) {
+              onOpenCustomNodeModal(pos);
+            } else {
+              onSpawnNode('custom', pos);
+            }
+          })
+        }
+      >
+        <span style={styles.itemLabel}>
+          <Sparkles size={15} color="#06b6d4" />
+          <span>{t.contextMenu.spawnCustom}</span>
+        </span>
       </button>
 
       <button
@@ -110,7 +182,11 @@ export default function CanvasContextMenu({
         style={styles.item}
         onClick={() => handleAction(() => onSpawnRegion(getFlowPosition()))}
       >
-        <span>🗺️ Создать сюжетную область (Главу)</span>
+        <span style={styles.itemLabel}>
+          <MapIcon size={15} color="#10b981" />
+          <span>{t.contextMenu.spawnRegion}</span>
+        </span>
+        <span style={{ opacity: 0.55, fontSize: '0.74rem' }}>C</span>
       </button>
 
       <div style={styles.divider} />
@@ -121,7 +197,10 @@ export default function CanvasContextMenu({
         style={styles.item}
         onClick={() => handleAction(() => onAutoLayout())}
       >
-        <span>📐 Авто-выравнивание графа</span>
+        <span style={styles.itemLabel}>
+          <LayoutGrid size={15} color="#60a5fa" />
+          <span>{t.contextMenu.autoLayout}</span>
+        </span>
       </button>
 
       <button
@@ -130,7 +209,10 @@ export default function CanvasContextMenu({
         style={styles.item}
         onClick={() => handleAction(() => fitView({ duration: 600, padding: 0.2 }))}
       >
-        <span>🎯 Центрировать полотно (Fit View)</span>
+        <span style={styles.itemLabel}>
+          <Compass size={15} color="#3b82f6" />
+          <span>{t.contextMenu.fitView}</span>
+        </span>
       </button>
 
       <button
@@ -139,7 +221,10 @@ export default function CanvasContextMenu({
         style={styles.item}
         onClick={() => handleAction(() => onSaveProject())}
       >
-        <span>💽 Сохранить проект (Ctrl+S)</span>
+        <span style={styles.itemLabel}>
+          <Save size={15} color="#10b981" />
+          <span>{t.contextMenu.saveProject}</span>
+        </span>
       </button>
 
       <div style={styles.divider} />
@@ -150,7 +235,10 @@ export default function CanvasContextMenu({
         style={styles.item}
         onClick={() => handleAction(() => onOpenVariables())}
       >
-        <span>⚙️ Свойства полотна / Переменные</span>
+        <span style={styles.itemLabel}>
+          <Database size={15} color="#f59e0b" />
+          <span>{t.contextMenu.openVariables}</span>
+        </span>
       </button>
     </div>
   );
@@ -160,13 +248,13 @@ const styles = {
   menu: {
     position: 'fixed',
     zIndex: 3200,
-    minWidth: 262,
+    minWidth: 268,
     padding: 6,
-    borderRadius: 14,
+    borderRadius: 16,
     background: 'var(--panel-bg, rgba(15, 23, 42, 0.94))',
     backdropFilter: 'blur(16px)',
     WebkitBackdropFilter: 'blur(16px)',
-    border: '1px solid var(--node-border, #334155)',
+    border: '1px solid var(--panel-border, #334155)',
     boxShadow: '0 18px 42px rgba(0, 0, 0, 0.45)',
     color: 'var(--text-color, #f8fafc)',
     display: 'flex',
@@ -175,8 +263,10 @@ const styles = {
   },
   item: {
     width: '100%',
-    padding: '8px 11px',
-    borderRadius: 9,
+    height: 36,
+    boxSizing: 'border-box',
+    padding: '0 11px',
+    borderRadius: 8,
     border: 'none',
     background: 'transparent',
     color: 'var(--text-color, #f8fafc)',
@@ -189,9 +279,14 @@ const styles = {
     justifyContent: 'space-between',
     gap: 10
   },
+  itemLabel: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8
+  },
   divider: {
     height: 1,
-    background: 'var(--node-border, #334155)',
+    background: 'var(--panel-border, #334155)',
     margin: '4px 6px'
   }
 };
