@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📖 Story Architect Desktop
+# 📖 Mitory Desktop
 
 **Visual Node-Based Interactive Story, Quest & Dialogue Tree Studio**
 
@@ -19,7 +19,7 @@
 
 ## 🌟 Overview
 
-**Story Architect Desktop** is an enterprise-grade visual narrative development environment designed for game writers, quest designers, and indie developers creating visual novels, text RPGs, and branching interactive fiction.
+**Mitory Story Builder** is an enterprise-grade visual narrative development environment designed for game writers, quest designers, and indie developers creating visual novels, text RPGs, and branching interactive fiction.
 
 It combines the performance and security of **Rust (Tauri v2)** with a modern, responsive **React 19** canvas powered by `@xyflow/react`.
 
@@ -123,9 +123,9 @@ On Windows, the compiled bundle artifacts will be written to:
 ```plaintext
 src-tauri/target/release/bundle/
 ├── nsis/
-│   └── Story Architect_0.1.0_x64-setup.exe   # Standalone installer
+│   └── Mitory story build_0.2.0_x64-setup.exe   # Standalone installer
 └── msi/
-    └── Story Architect_0.1.0_x64_en-US.msi   # Windows Installer package
+    └── Mitory story build_0.2.0_x64_en-US.msi   # Windows Installer package
 ```
 
 ### Customizing Application Artwork
